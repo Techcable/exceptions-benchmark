@@ -9,18 +9,18 @@
 #include "idiot_argparse.h"
 
 /**
- * We use fibonnaci function here because
+ * We use fibonacci function here because
  *
  * 1. It's simple and fast (using iterative version).
  *    - However, it should not be simple enough for compiler to optimize away completely (hopefully)
- * 2. It overflows int64_t relatively quickly. Specifically fibonnaci(93) is the smallest n where fibonnaci(n)<2**63-1
+ * 2. It overflows int64_t relatively quickly. Specifically fib(93) is the smallest n where fibonacci(n)<2**63-1
  */
 struct fib_ctx {
     int64_t target;
     bool abort_on_error;
 };
 
-void* run_fibonnaci(void *raw_ctx) {
+void* run_fibonacci(void *raw_ctx) {
     int64_t *res_box = malloc(sizeof(int64_t));
     int64_t a = 1, b = 1;
     struct fib_ctx *ctx = (struct fib_ctx*) raw_ctx;
@@ -29,7 +29,7 @@ void* run_fibonnaci(void *raw_ctx) {
     assert(target > 0);
     /*
      * Use fast iterative calculation. Algorithm:
-     * def fibonnaci(n):
+     * def fibonacci(n):
      *     a, b = 1, 1
      *     for k in range(1, n):
      *         a, b = b, a + b
@@ -104,10 +104,10 @@ int main(int argc, char *argv[]) {
         assert(((int64_t) start) != -1);
         void *res = NULL;
         if (flags.dont_catch) {
-            res = run_fibonnaci(&ctx);
+            res = run_fibonacci(&ctx);
         } else {
             ExceptionResult exc_res = try_catch_exception(
-                run_fibonnaci,
+                run_fibonacci,
                 &ctx
             );
             if (exc_res.exception != NULL) {
