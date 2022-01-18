@@ -21,12 +21,20 @@ struct fib_ctx {
 };
 
 void* run_fibonacci(void *raw_ctx) {
-    int64_t *res_box = malloc(sizeof(int64_t));
+    int64_t *res_box = try_malloc(sizeof(int64_t));
     int64_t a = 1, b = 1;
     struct fib_ctx *ctx = (struct fib_ctx*) raw_ctx;
     int64_t target = ctx->target;
     bool abort_on_error = ctx->abort_on_error;
-    assert(target > 0);
+    if (target < 0) {
+        Exception *exc = create_exceptionf("Invalid arg: fib(%lld)", target);
+        throw_exception(exc);
+        assert(false);
+    }
+    if (target == 0) {
+        *res_box = 0;
+        return res_box;
+    }
     /*
      * Use fast iterative calculation. Algorithm:
      * def fibonacci(n):
@@ -98,39 +106,54 @@ int main(int argc, char *argv[]) {
     }
     for (int target_idx = 0; target_idx < num_targets; target_idx++) {
         int64_t target = targets[target_idx];
+        printf("Running fib(%lld):\n", target);
         Exception *exc = NULL;
-        ctx.target = target;
+        assert(target >= 0);
+        int64_t *results = malloc(sizeof(int64_t) * target);
+        int result_size = 0;
         // Begin bench: Keep all IO outside of this section
         clock_t start = clock();
         assert(((int64_t) start) != -1);
-        void *res = NULL;
-        if (flags.dont_catch) {
-            res = run_fibonacci(&ctx);
-        } else {
-            ExceptionResult exc_res = try_catch_exception(
-                run_fibonacci,
-                &ctx
-            );
-            if (exc_res.exception != NULL) {
-                exc = exc_res.exception;
-                res = NULL;
+        for (int64_t iter = 1; iter <= target; iter++) {
+            void *res = NULL;
+            ctx.target = iter;
+            if (flags.abort_on_error) {
+                res = run_fibonacci(&ctx);
             } else {
-                res = exc_res.success;;
-            }
+                ExceptionResult exc_res = try_catch_exception(
+                    run_fibonacci,
+                    &ctx
+                );
+                if (exc_res.exception != NULL) {
+                    exc = exc_res.exception;
+                    break;
+                } else {
+                    res = exc_res.success;
+                }
+            };
+            int64_t res_int = *((int64_t*) res);
+            results[result_size++] = res_int;
+            if (res == NULL) free(res); // Be a good citizen
         }
         clock_t end = clock();
         // End bench
-        if (res == NULL) {
+        if (exc != NULL) {
             assert(exc != NULL);
-            fprintf(stderr, "fib(%lld) threw exception: %s\n", target, get_exception_msg(exc));
+            fprintf(stderr, "fib(%d) threw exception: %s\n", result_size, get_exception_msg(exc));
+        }
+        if (result_size > 0) {
+            int random_idx = rand() % result_size;
+            assert(random_idx < result_size);
+            int64_t last = results[result_size - 1];
+            printf("fib(%d) -> %lld\n", random_idx + 1, results[random_idx]);
+            printf("fib(%d) -> %lld\n", result_size, last);
         } else {
-            int64_t res_int = *((int64_t*) res);
-            printf("fib(%lld) -> %lld\n", target, res_int);
+            fprintf(stderr, "Got zero results for fib(%lld)\n", target);
         }
         int64_t diff = ((int64_t) end) - ((int64_t) start);
         double millis = (((double) diff) / CLOCKS_PER_SEC) * 1000.0;
-        if (res == NULL) free(res); // Be a good citizen
-        printf("Time for fib(%lld): %.6f millis\n", target, millis);
+        free(results);
+        printf("Time for fib(%lld): %.3f millis\n", target, millis);
     }
 }
 

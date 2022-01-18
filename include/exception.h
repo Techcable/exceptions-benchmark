@@ -17,6 +17,12 @@ extern const char *EXCEPTION_BACKEND_NAME;
 #else
     #error "Unsupported compiler"
 #endif
+#if defined(__GNUC__) || defined(__clang__)
+    #define _ATTR_FORMAT_STRING(fmt, arg) __attribute__((format( printf, fmt, arg )))
+#else
+    // nop is fine
+    #define _ATTR_FORMAT_STRING(fmt, arg)
+#endif
 
 typedef struct exception Exception;
 
@@ -50,11 +56,19 @@ static inline ExceptionResult try_catch_exception_nop(
 
 _ATTR_NORETURN void throw_exception(Exception *exc);
 
+_ATTR_FORMAT_STRING(1, 2) Exception* create_exceptionf(const char *fmt, ...);
+
 Exception* create_simple_exception(const char *msg);
+
+Exception* oom_exception();
 
 const char *get_exception_msg(Exception *e);
 
-
+static inline void* try_malloc(size_t size) {
+    void *res = malloc(size);
+    if (res == NULL) throw_exception(oom_exception());
+    return res;
+}
 
 #ifdef __cplusplus
 } // extern "C"
