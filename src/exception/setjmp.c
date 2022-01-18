@@ -5,6 +5,8 @@
 
 #include "exception.h"
 
+const char *EXCEPTION_BACKEND_NAME = "setjmp";
+
 static jmp_buf current_ctx;
 static Exception* current_exc;
 
@@ -12,7 +14,7 @@ struct exception {
     const char *msg;
 };
 
-ExceptionResult try_catch(
+ExceptionResult try_catch_exception(
     void* (*func_ptr)(void* ctx),
     void* ctx
 ) {
@@ -42,4 +44,8 @@ Exception *create_simple_exception(const char *msg) {
     Exception *exc = malloc(sizeof(Exception));
     exc->msg = msg;
     return exc;
+}
+
+const char *get_exception_msg(Exception *e) {
+    return e->msg;
 }
