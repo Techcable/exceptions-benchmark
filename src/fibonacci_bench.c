@@ -80,7 +80,7 @@ int main(int argc, char *argv[]) {
     while (has_args(&parser)) {
         char *target_str = consume_arg(&parser);
         errno = 0;
-        int64_t target = strtol(target_str, NULL, 0);
+        int64_t target = strtol(target_str, NULL, 10);
         if (target == 0 && errno != 0) {
             fprintf(stderr, "Unable to parse %dth integer: %s\n", num_targets + 1, target_str);
             perror("Invalid value");
@@ -99,6 +99,7 @@ int main(int argc, char *argv[]) {
     for (int target_idx = 0; target_idx < num_targets; target_idx++) {
         int64_t target = targets[target_idx];
         Exception *exc = NULL;
+        ctx.target = target;
         // Begin bench: Keep all IO outside of this section
         clock_t start = clock();
         assert(((int64_t) start) != -1);
@@ -127,9 +128,9 @@ int main(int argc, char *argv[]) {
             printf("fib(%lld) -> %lld\n", target, res_int);
         }
         int64_t diff = ((int64_t) end) - ((int64_t) start);
-        double millis = (((double) diff) / CLOCKS_PER_SEC) * 1000;
+        double millis = (((double) diff) / CLOCKS_PER_SEC) * 1000.0;
         if (res == NULL) free(res); // Be a good citizen
-        printf("Time for fib(%lld): %f.3 millis\n", target, millis);
+        printf("Time for fib(%lld): %.6f millis\n", target, millis);
     }
 }
 
